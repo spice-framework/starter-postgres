@@ -22,7 +22,7 @@ func Manifest() spicestarter.Manifest {
 				},
 			},
 		},
-		Capabilities: []string{"data.postgresql", "data.sql"},
+		Capabilities: []string{"data.postgresql", "data.sql", "migration.postgresql"},
 		Dependencies: []spicestarter.Dependency{
 			{
 				Module:  "github.com/jackc/pgx/v5",
