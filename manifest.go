@@ -20,9 +20,18 @@ func Manifest() spicestarter.Manifest {
 					Package: "github.com/StevenBuglione/spice/starter/postgres",
 					Symbol:  "Open",
 				},
+				{
+					Package: "github.com/StevenBuglione/spice/starter/postgres",
+					Symbol:  "NewBatchStore",
+				},
 			},
 		},
-		Capabilities: []string{"data.postgresql", "data.sql", "migration.postgresql"},
+		Capabilities: []string{
+			"batch.postgresql",
+			"data.postgresql",
+			"data.sql",
+			"migration.postgresql",
+		},
 		Dependencies: []spicestarter.Dependency{
 			{
 				Module:  "github.com/jackc/pgx/v5",
