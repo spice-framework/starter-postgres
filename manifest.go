@@ -24,12 +24,17 @@ func Manifest() spicestarter.Manifest {
 					Package: "github.com/StevenBuglione/spice/starter/postgres",
 					Symbol:  "NewBatchStore",
 				},
+				{
+					Package: "github.com/StevenBuglione/spice/starter/postgres",
+					Symbol:  "NewOutboxStore",
+				},
 			},
 		},
 		Capabilities: []string{
 			"batch.postgresql",
 			"data.postgresql",
 			"data.sql",
+			"event.outbox.postgresql",
 			"migration.postgresql",
 		},
 		Dependencies: []spicestarter.Dependency{
