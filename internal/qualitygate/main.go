@@ -97,13 +97,19 @@ func run(ctx context.Context, root, mode string) error {
 }
 
 func prepareDependencies(ctx context.Context, root string) error {
-	if err := networkCommand(ctx, root, "go", "mod", "download"); err != nil {
+	if err := networkCommand(ctx, root, "mod", "download"); err != nil {
 		return err
 	}
-	if err := networkCommand(ctx, root, "go", "-C", "tools", "mod", "download"); err != nil {
+	// The product tidy graph includes test-only dependencies of pgx packages.
+	// Fetch and validate that graph only in this explicit network-capable phase;
+	// checkModule repeats the same read-only assertion with GOPROXY disabled.
+	if err := networkCommand(ctx, root, "mod", "tidy", "-diff"); err != nil {
 		return err
 	}
-	return networkCommand(ctx, root, "go", "-C", "tools", "mod", "tidy", "-diff")
+	if err := networkCommand(ctx, root, "-C", "tools", "mod", "download"); err != nil {
+		return err
+	}
+	return networkCommand(ctx, root, "-C", "tools", "mod", "tidy", "-diff")
 }
 
 func checkIdentity(root string) error {
@@ -353,15 +359,15 @@ func command(ctx context.Context, directory string, environment map[string]strin
 	return nil
 }
 
-func networkCommand(ctx context.Context, directory, executable string, arguments ...string) error {
+func networkCommand(ctx context.Context, directory string, arguments ...string) error {
 	// #nosec G204,G702 -- executable and arguments are fixed repository-owned values.
-	cmd := exec.CommandContext(ctx, executable, arguments...)
+	cmd := exec.CommandContext(ctx, "go", arguments...)
 	cmd.Dir = directory
 	cmd.Env = mergedEnvironment(nil, true)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s %s: %w", executable, strings.Join(arguments, " "), err)
+		return fmt.Errorf("go %s: %w", strings.Join(arguments, " "), err)
 	}
 	return nil
 }
