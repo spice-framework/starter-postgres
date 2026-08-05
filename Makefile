@@ -1,4 +1,4 @@
-.PHONY: check compatibility compatibility-current compatibility-minimum fmt integration verify
+.PHONY: check compatibility compatibility-current compatibility-minimum fmt integration verify verify-release
 
 check:
 	go run ./internal/qualitygate -mode=check
@@ -21,3 +21,6 @@ verify:
 	go run ./internal/corecompat -line=minimum
 	go run ./internal/corecompat -line=current
 	go run ./internal/qualitygate -mode=verify
+
+verify-release:
+	go run ./internal/qualitygate -mode=verify-release

@@ -34,7 +34,7 @@ func main() {
 }
 
 func execute() int {
-	mode := flag.String("mode", "verify", "verification mode: check, fmt, or verify")
+	mode := flag.String("mode", "verify", "verification mode: check, fmt, verify, or verify-release")
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
@@ -80,6 +80,11 @@ func run(ctx context.Context, root, mode string) error {
 			{"security", func() error { return security(ctx, root) }},
 			{"shuffled race tests and coverage", func() error { return testsAndCoverage(ctx, root) }},
 			{"offline vendor", func() error { return offline(ctx, root) }},
+		}
+	case "verify-release":
+		steps = []step{
+			identity,
+			{"source release contract", func() error { return releaseContract(ctx, root) }},
 		}
 	default:
 		return fmt.Errorf("unknown mode %q", mode)
@@ -314,6 +319,53 @@ func offline(ctx context.Context, root string) error {
 		return err
 	}
 	return command(ctx, root, environment, "go", "build", "-trimpath", "./...")
+}
+
+func releaseContract(ctx context.Context, root string) error {
+	if err := command(ctx, root, nil, "go", "test", "-count=1", "./internal/release", "./cmd/starter-postgres-release"); err != nil {
+		return err
+	}
+	parent, err := os.MkdirTemp("", "starter-postgres-release-contract-*")
+	if err != nil {
+		return fmt.Errorf("create release contract directory: %w", err)
+	}
+	defer removeTree(parent)
+	outputDir := filepath.Join(parent, "dist")
+	if runErr := command(
+		ctx,
+		root,
+		nil,
+		"go",
+		"run",
+		"./cmd/starter-postgres-release",
+		"-rehearsal",
+		"-version=v0.0.0-release-contract",
+		"-source-date-epoch=1788000000",
+		"-output="+outputDir,
+	); runErr != nil {
+		return runErr
+	}
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		return fmt.Errorf("read release contract artifacts: %w", err)
+	}
+	actual := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return fmt.Errorf("release contract emitted unexpected directory %q", entry.Name())
+		}
+		actual = append(actual, entry.Name())
+	}
+	slices.Sort(actual)
+	expected := []string{
+		"checksums.txt",
+		"starter-postgres_0.0.0-release-contract_sbom.spdx.json",
+		"starter-postgres_0.0.0-release-contract_source.tar.gz",
+	}
+	if !slices.Equal(actual, expected) {
+		return fmt.Errorf("unsigned release rehearsal artifacts = %v; want %v", actual, expected)
+	}
+	return nil
 }
 
 func toolPath(ctx context.Context, root, name string) (string, error) {
