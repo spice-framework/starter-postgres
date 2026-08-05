@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	spicebatch "github.com/StevenBuglione/spice/batch"
-	"github.com/StevenBuglione/spice/data"
+	spicebatch "github.com/spice-framework/spice/batch"
+	"github.com/spice-framework/spice/data"
 )
 
 const defaultBatchTable = "spice_batch_execution"

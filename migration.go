@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	spicemigration "github.com/StevenBuglione/spice/migration"
+	spicemigration "github.com/spice-framework/spice/migration"
 )
 
 const (

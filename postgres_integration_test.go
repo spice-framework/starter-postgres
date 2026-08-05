@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/StevenBuglione/spice/data"
-	"github.com/StevenBuglione/spice/data/repository"
-	"github.com/StevenBuglione/spice/migration"
-	"github.com/StevenBuglione/spice/starter/postgres"
+	"github.com/spice-framework/spice/data"
+	"github.com/spice-framework/spice/data/repository"
+	"github.com/spice-framework/spice/migration"
+	"github.com/spice-framework/spice/starter/postgres"
 )
 
 const (

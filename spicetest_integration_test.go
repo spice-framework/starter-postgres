@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/StevenBuglione/spice/data"
-	"github.com/StevenBuglione/spice/spicetest"
-	"github.com/StevenBuglione/spice/starter/postgres"
+	"github.com/spice-framework/spice/data"
+	"github.com/spice-framework/spice/spicetest"
+	"github.com/spice-framework/spice/starter/postgres"
 )
 
 const integrationTestSliceTable = "spice_data_slice_integration"

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/StevenBuglione/spice/batch"
-	"github.com/StevenBuglione/spice/data"
-	"github.com/StevenBuglione/spice/starter/postgres"
+	"github.com/spice-framework/spice/batch"
+	"github.com/spice-framework/spice/data"
+	"github.com/spice-framework/spice/starter/postgres"
 )
 
 const integrationBatchSchema = "spice_batch_integration"

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	spicemigration "github.com/StevenBuglione/spice/migration"
+	spicemigration "github.com/spice-framework/spice/migration"
 )
 
 var errMigrationTest = errors.New("migration test failure")

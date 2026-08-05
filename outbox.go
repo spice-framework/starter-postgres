@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/StevenBuglione/spice/data"
-	"github.com/StevenBuglione/spice/event/outbox"
+	"github.com/spice-framework/spice/data"
+	"github.com/spice-framework/spice/event/outbox"
 )
 
 const defaultOutboxTable = "spice_event_outbox"
