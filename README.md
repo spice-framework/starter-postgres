@@ -48,6 +48,20 @@ The normal verifier checks formatting, module/vendor reproducibility, vet,
 allowlisted lint and nil safety, gosec, govulncheck, shuffled race tests, at
 least 85% repository coverage, and offline vendor builds.
 
+Core compatibility is a separate, network-capable release check. It exercises
+the minimum and current exact versions in `spice-compatibility.json`. The
+minimum must equal the direct Spice requirement in `go.mod`. Both checks use
+temporary alternate module files; they never follow a moving branch during the
+build or rewrite `go.mod`, `go.sum`, or `vendor`:
+
+```text
+make compatibility
+```
+
+`make verify` includes both compatibility lines and one execution of the local
+quality gate. Hosted CI runs the two compatibility lines independently so they
+can complete in parallel.
+
 Real-system acceptance runs all integration-tagged tests against the pinned
 PostgreSQL 18.4 image digest. It proves transactions, repositories, advisory
 locked migrations, rollback, cancellation, batch leases/restart, outbox

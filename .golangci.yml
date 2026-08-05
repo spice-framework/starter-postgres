@@ -111,6 +111,10 @@ linters:
         text: 'use of `os\.Exit`'
         linters:
           - forbidigo
+      - path: "internal[/\\\\]corecompat[/\\\\]main\\.go$"
+        text: 'use of `os\.Exit`'
+        linters:
+          - forbidigo
 
 formatters:
   enable:
