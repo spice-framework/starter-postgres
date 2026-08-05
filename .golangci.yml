@@ -4,6 +4,7 @@ run:
   timeout: 10m
   tests: true
   modules-download-mode: vendor
+  allow-serial-runners: true
 
 linters:
   default: none
