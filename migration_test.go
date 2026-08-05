@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	spicemigration "github.com/spice-framework/spice/migration"
 )
 
@@ -201,6 +203,16 @@ func TestPostgreSQLMigrationBackendLockAndRegistryFailures(t *testing.T) {
 			wantUnlockCall: true,
 			wantWorkCalls:  1,
 		},
+		{
+			name: "lock not owned and close fails",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.unlocked = false
+				connection.closeErr = errMigrationTest
+			},
+			wantClosed:     true,
+			wantUnlockCall: true,
+			wantWorkCalls:  1,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -272,6 +284,111 @@ func TestPostgreSQLMigrationSessionRejectsInvalidRegistryAndMigration(t *testing
 	}
 	if len(connection.events) != 1 {
 		t.Fatalf("unexpected database work: %#v", connection.events)
+	}
+}
+
+func TestPostgreSQLMigrationSessionReportsReadFailures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		configure func(*fakeMigrationConnection)
+	}{
+		{
+			name: "query",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.queryErr = errMigrationTest
+			},
+		},
+		{
+			name: "scan",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.applied = []spicemigration.Applied{{Version: 1}}
+				connection.scanErr = errMigrationTest
+			},
+		},
+		{
+			name: "rows",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.rowsErr = errMigrationTest
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			connection := newFakeMigrationConnection()
+			test.configure(connection)
+			session := &postgresMigrationSession{
+				connection: connection,
+				registry:   `"public"."spice_schema_history"`,
+			}
+			if _, err := session.Applied(context.Background()); !errors.Is(err, errMigrationTest) {
+				t.Fatalf("Applied() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLMigrationSessionReportsTransactionFailures(t *testing.T) {
+	t.Parallel()
+
+	plan, err := spicemigration.NewPlan([]spicemigration.Spec{{
+		Version: 1,
+		Module:  "orders",
+		Name:    "create orders",
+		SQL:     "SELECT 1;",
+	}})
+	if err != nil {
+		t.Fatalf("construct plan: %v", err)
+	}
+	entry := plan.Migrations()[0]
+	tests := []struct {
+		name      string
+		configure func(*fakeMigrationConnection)
+	}{
+		{
+			name: "begin",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.beginErr = errMigrationTest
+			},
+		},
+		{
+			name: "commit",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.commitErr = errMigrationTest
+			},
+		},
+		{
+			name: "rollback join",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.scriptErr = errMigrationTest
+				connection.rollbackErr = errors.New("rollback failure")
+			},
+		},
+		{
+			name: "already rolled back",
+			configure: func(connection *fakeMigrationConnection) {
+				connection.scriptErr = errMigrationTest
+				connection.rollbackErr = pgx.ErrTxClosed
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			connection := newFakeMigrationConnection()
+			test.configure(connection)
+			session := &postgresMigrationSession{
+				connection: connection,
+				registry:   `"public"."spice_schema_history"`,
+			}
+			if err := session.Apply(context.Background(), entry); !errors.Is(err, errMigrationTest) {
+				t.Fatalf("Apply() error = %v", err)
+			}
+		})
 	}
 }
 
@@ -365,6 +482,7 @@ type fakeMigrationConnection struct {
 	registryErr  error
 	queryErr     error
 	rowsErr      error
+	scanErr      error
 	beginErr     error
 	scriptErr    error
 	recordErr    error
@@ -462,6 +580,9 @@ func (rows *fakeMigrationRows) Next() bool {
 }
 
 func (rows *fakeMigrationRows) Scan(destinations ...any) error {
+	if rows.connection.scanErr != nil {
+		return rows.connection.scanErr
+	}
 	if len(destinations) != 5 {
 		return fmt.Errorf("scan destinations = %d, want 5", len(destinations))
 	}

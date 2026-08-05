@@ -108,6 +108,9 @@ func TestNormalizeOptionsValidatesBoundariesWithoutExposingSecrets(t *testing.T)
 		{name: "malformed query", mutate: func(options *Options) {
 			options.URL += "?sslmode=%zz"
 		}},
+		{name: "malformed URL", mutate: func(options *Options) {
+			options.URL = "postgres://spice:secret@database.example.test:5432/application\n"
+		}},
 		{name: "file-backed service", mutate: func(options *Options) {
 			options.URL += "?servicefile=redirect.conf"
 		}},

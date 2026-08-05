@@ -12,7 +12,7 @@ import (
 
 	"github.com/spice-framework/spice/batch"
 	"github.com/spice-framework/spice/data"
-	"github.com/spice-framework/spice/starter/postgres"
+	postgres "github.com/spice-framework/starter-postgres"
 )
 
 const integrationBatchSchema = "spice_batch_integration"

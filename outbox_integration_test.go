@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/spice-framework/spice/event/outbox"
-	"github.com/spice-framework/spice/starter/postgres"
+	postgres "github.com/spice-framework/starter-postgres"
 )
 
 const integrationOutboxSchema = "spice_outbox_integration"
