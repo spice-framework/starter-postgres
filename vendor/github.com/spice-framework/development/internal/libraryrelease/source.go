@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spice-framework/development/internal/process"
 )
@@ -101,6 +102,7 @@ func parseGitTree(content []byte) ([]gitTreeEntry, error) {
 	records := bytes.Split(bytes.TrimSuffix(content, []byte{0}), []byte{0})
 	entries := make([]gitTreeEntry, 0, len(records))
 	seen := make(map[string]struct{}, len(records))
+	portable := make(map[string]string, len(records))
 	for _, record := range records {
 		metadata, nameBytes, found := bytes.Cut(record, []byte{'\t'})
 		fields := strings.Fields(string(metadata))
@@ -118,6 +120,19 @@ func parseGitTree(content []byte) ([]gitTreeEntry, error) {
 			return nil, fmt.Errorf("release source path %q is duplicated", name)
 		}
 		seen[name] = struct{}{}
+		key := strings.ToLower(name)
+		if prior, collision := portable[key]; collision {
+			left, right := prior, name
+			if strings.Compare(left, right) > 0 {
+				left, right = right, left
+			}
+			return nil, fmt.Errorf(
+				"release source paths %q and %q collide on case-insensitive filesystems",
+				left,
+				right,
+			)
+		}
+		portable[key] = name
 		entries = append(entries, gitTreeEntry{mode: fields[0], hash: fields[2], name: name})
 	}
 	slices.SortFunc(entries, func(left, right gitTreeEntry) int {
@@ -283,8 +298,15 @@ func validateSymlink(name string, target string) error {
 }
 
 func validatePortablePath(name string, allowTraversal bool) error {
-	for _, character := range name {
-		if character < 0x20 || character == 0x7f || strings.ContainsRune(`<>:"|?*`, character) {
+	if !utf8.ValidString(name) {
+		return errors.New("path is not valid UTF-8")
+	}
+	for index := range len(name) {
+		character := name[index]
+		if character < 0x20 || character > 0x7e {
+			return errors.New("path contains a byte outside printable ASCII")
+		}
+		if strings.ContainsRune(`<>:"|?*`, rune(character)) {
 			return errors.New("path contains a character unsupported on Windows")
 		}
 	}

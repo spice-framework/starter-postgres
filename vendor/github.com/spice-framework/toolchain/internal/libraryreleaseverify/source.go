@@ -480,7 +480,8 @@ func validateArchivePath(name string) error {
 
 func portablePathComponent(component string) bool {
 	if component == "" || component == "." || component == ".." ||
-		strings.HasSuffix(component, ".") || strings.HasSuffix(component, " ") {
+		strings.HasSuffix(component, ".") || strings.HasSuffix(component, " ") ||
+		!printableASCII(component) {
 		return false
 	}
 	for _, character := range component {
@@ -497,6 +498,15 @@ func portablePathComponent(component string) bool {
 	default:
 		return true
 	}
+}
+
+func printableASCII(value string) bool {
+	for index := range len(value) {
+		if value[index] < 0x20 || value[index] > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 func safeLinkTarget(name, target string) bool {

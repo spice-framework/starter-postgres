@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const releaseWorkflowRevision = "164e81ea4a31fa124670dc69afaec5bdf5747d78"
+const releaseWorkflowRevision = "f8fe9ec3cedd17f8bec4bf3d40f6640902774124"
 
 func checkReleaseWorkflow(root string) error {
 	path := filepath.Join(root, ".github", "workflows", "release.yml")
@@ -29,14 +29,13 @@ on:
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
 
-# The called workflow narrows validation and signing to read-only access and
-# reserves this maximum capability for its protected publish job.
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release:
     name: Centrally verify, sign, and publish
+    permissions:
+      contents: write
     uses: spice-framework/.github/.github/workflows/library-release.yml@%s
     with:
       module: %s

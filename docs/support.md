@@ -9,8 +9,8 @@
 | Architectures | amd64 and arm64 compilation through the public core API |
 | Transport security | `verify-full` by default; explicit secure modes accepted; insecure mode requires opt-in |
 | Real-system artifact | `postgres:18.4-alpine3.24` index digest `sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15` |
-| Release parity tool | `github.com/spice-framework/development/cmd/spice-dev` at `v0.0.0-20260806121906-963bb6676069` |
-| Release verifier tool | `github.com/spice-framework/toolchain/cmd/spice-library-release-verify` at `v0.0.0-20260806054457-a83d9b58034c` |
+| Release parity tool | `github.com/spice-framework/development/cmd/spice-dev` at `v0.0.0-20260806132124-4c308d1b9fda` |
+| Release verifier tool | `github.com/spice-framework/toolchain/cmd/spice-library-release-verify` at `v0.0.0-20260806133530-71211498297c` |
 
 The first preview tag will define the first published minimum Spice version.
 Until then, `spice-compatibility.json` is the sole compatibility boundary

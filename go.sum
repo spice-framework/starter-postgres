@@ -11,12 +11,12 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/spice-framework/development v0.0.0-20260806121906-963bb6676069 h1:3ZfZwoXihTJ9+N+v3aHLiHTPGpGa/fxr1ifCi0uGGNw=
-github.com/spice-framework/development v0.0.0-20260806121906-963bb6676069/go.mod h1:0lIxjVtv+p4iTrvLJm05OjimS2MSrIqM1xPR7Q0GHEg=
+github.com/spice-framework/development v0.0.0-20260806132124-4c308d1b9fda h1:2NwMsYJ6BqeA5johEh5gXxqEyf5RoVsKZyNH4AMR4Yo=
+github.com/spice-framework/development v0.0.0-20260806132124-4c308d1b9fda/go.mod h1:0lIxjVtv+p4iTrvLJm05OjimS2MSrIqM1xPR7Q0GHEg=
 github.com/spice-framework/spice v0.0.0-20260805222830-a2ecd56df246 h1:IAPcr8bmwyeNQWME5bUWg/NvDVGoBJY+TRumFXMPXR8=
 github.com/spice-framework/spice v0.0.0-20260805222830-a2ecd56df246/go.mod h1:dBZV5UZcbY6pzhfGNtvAwQIJ8YsFna+jf1SAlmukJfk=
-github.com/spice-framework/toolchain v0.0.0-20260806054457-a83d9b58034c h1:73YMuiirxQEEgdytN47xTFDtTWOoNdW7kSS+IV/WaHc=
-github.com/spice-framework/toolchain v0.0.0-20260806054457-a83d9b58034c/go.mod h1:/U0xhEiz4xGpiCCS560gjgDiixDh5lR4NXVbVPmrmh8=
+github.com/spice-framework/toolchain v0.0.0-20260806133530-71211498297c h1:US3ChgXYhIXFZ5VNYQ2BjuiTbStVNEyC1cBjxN3SCXM=
+github.com/spice-framework/toolchain v0.0.0-20260806133530-71211498297c/go.mod h1:/U0xhEiz4xGpiCCS560gjgDiixDh5lR4NXVbVPmrmh8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

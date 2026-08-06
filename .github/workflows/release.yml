@@ -5,14 +5,13 @@ on:
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
 
-# The called workflow narrows validation and signing to read-only access and
-# reserves this maximum capability for its protected publish job.
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release:
     name: Centrally verify, sign, and publish
-    uses: spice-framework/.github/.github/workflows/library-release.yml@164e81ea4a31fa124670dc69afaec5bdf5747d78
+    permissions:
+      contents: write
+    uses: spice-framework/.github/.github/workflows/library-release.yml@f8fe9ec3cedd17f8bec4bf3d40f6640902774124
     with:
       module: github.com/spice-framework/starter-postgres

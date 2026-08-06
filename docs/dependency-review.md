@@ -52,12 +52,12 @@ Primary references:
 - Decision: approved as the repository-authorized release signer, renderer,
   and independent verifier.
 - Version: `github.com/spice-framework/development`
-  `v0.0.0-20260806121906-963bb6676069`.
+  `v0.0.0-20260806132124-4c308d1b9fda`.
 - Tool: `github.com/spice-framework/development/cmd/spice-dev` through the
   standard Go `tool` directive; invocations always use the full package path.
 - Verifier: `github.com/spice-framework/toolchain/cmd/spice-library-release-verify`
   from `github.com/spice-framework/toolchain`
-  `v0.0.0-20260806054457-a83d9b58034c`, also through the standard Go `tool`
+  `v0.0.0-20260806133530-71211498297c`, also through the standard Go `tool`
   directive.
 - License: Apache-2.0, with its notice retained in `vendor`.
 - Runtime scope: none. Product packages do not import the development module,

@@ -22,7 +22,7 @@ github.com/jackc/pgx/v5/stdlib
 ## explicit; go 1.19
 github.com/jackc/puddle/v2
 github.com/jackc/puddle/v2/internal/genstack
-# github.com/spice-framework/development v0.0.0-20260806121906-963bb6676069
+# github.com/spice-framework/development v0.0.0-20260806132124-4c308d1b9fda
 ## explicit; go 1.26.0
 github.com/spice-framework/development/cmd/spice-dev
 github.com/spice-framework/development/internal/bootstrap
@@ -47,7 +47,7 @@ github.com/spice-framework/spice/migration
 github.com/spice-framework/spice/spicetest
 github.com/spice-framework/spice/validation
 github.com/spice-framework/spice/web
-# github.com/spice-framework/toolchain v0.0.0-20260806054457-a83d9b58034c
+# github.com/spice-framework/toolchain v0.0.0-20260806133530-71211498297c
 ## explicit; go 1.26.0
 github.com/spice-framework/toolchain/cmd/spice-library-release-verify
 github.com/spice-framework/toolchain/internal/gitenv

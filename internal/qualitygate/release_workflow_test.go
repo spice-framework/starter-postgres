@@ -19,6 +19,15 @@ func TestCheckReleaseWorkflow(t *testing.T) {
 			return strings.Replace(content, releaseWorkflowRevision, strings.Repeat("0", 40), 1)
 		}, wantErr: true},
 		{name: "wrong module", mutate: func(content string) string { return strings.Replace(content, modulePath, modulePath+"-wrong", 1) }, wantErr: true},
+		{name: "repository wide write permission", mutate: func(content string) string {
+			return strings.Replace(content, "permissions: {}", "permissions:\n  contents: write", 1)
+		}, wantErr: true},
+		{name: "missing job permission", mutate: func(content string) string {
+			return strings.Replace(content, "    permissions:\n      contents: write\n", "", 1)
+		}, wantErr: true},
+		{name: "secret forwarding", mutate: func(content string) string {
+			return strings.Replace(content, "    with:\n", "    secrets: inherit\n    with:\n", 1)
+		}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
