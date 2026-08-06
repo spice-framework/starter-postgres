@@ -66,13 +66,13 @@ Primary references:
   selection. That build-time coupling is accepted and visible in `go.mod`,
   `go.sum`, and `vendor/modules.txt`; no parallel tool registry is introduced.
 - Integrity and network behavior: the exact pseudo-version is pinned and
-  checksummed. Release parity runs with `GOWORK=off`, `GOPROXY=off`,
+  checksummed. Release rehearsal runs with `GOWORK=off`, `GOPROXY=off`,
   `GOTOOLCHAIN=local`, and `GOFLAGS=-mod=vendor`, so it cannot select an ambient
   checkout, upgrade itself, or download dependencies.
 - Security: the trusted native renderer reads the exact committed Git graph
   and writes only to caller-supplied temporary output directories. The
   independent verifier authenticates release artifacts against an external
   trust anchor and exact Git objects. Neither tool generates private material.
-- Maintenance: the protected central workflow owns production. The retained
-  local builder remains only as the dual-builder parity oracle and is not
-  removed by this cutover.
+- Maintenance: the protected central workflow is the sole production builder.
+  The former repository-local builder was removed after the protected,
+  independently verified central path was established.

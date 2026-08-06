@@ -1,4 +1,4 @@
-.PHONY: check compatibility compatibility-current compatibility-minimum fmt integration release-parity verify verify-release
+.PHONY: check compatibility compatibility-current compatibility-minimum fmt integration release-rehearsal verify verify-release
 
 check:
 	go run ./internal/qualitygate -mode=check
@@ -17,12 +17,12 @@ fmt:
 integration:
 	go test -tags=integration -race -shuffle=on -count=1 ./...
 
-release-parity: export GOWORK := off
-release-parity: export GOPROXY := off
-release-parity: export GOTOOLCHAIN := local
-release-parity: export GOFLAGS := -mod=vendor
-release-parity:
-	go run ./internal/qualitygate -mode=release-parity
+release-rehearsal: export GOWORK := off
+release-rehearsal: export GOPROXY := off
+release-rehearsal: export GOTOOLCHAIN := local
+release-rehearsal: export GOFLAGS := -mod=vendor
+release-rehearsal:
+	go run ./internal/qualitygate -mode=release-rehearsal
 
 verify:
 	go run ./internal/corecompat -line=minimum

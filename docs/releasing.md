@@ -1,145 +1,92 @@
-# Releasing starter-postgres
+# Release contract
 
-This library owns its release construction. It does not use GoReleaser or a
-second dependency/build graph: `cmd/starter-postgres-release` reads the
-Git-tracked source tree and the committed `go.mod`, `go.sum`, and
-`vendor/modules.txt` accepted by repository verification.
+starter-postgres releases are ordinary Go module tags plus a small, independently
+verifiable artifact set. The repository owns the complete build. No external
+release build service, mutable workspace snapshot, or network-resolved package
+list participates in artifact construction.
 
-## Artifact contract
+For `v1.2.3`, the release builder produces:
 
-For `v0.1.0`, a production build creates exactly:
+| Artifact | Contract |
+|---|---|
+| `starter-postgres_1.2.3_source.tar.gz` | Exact tagged Git commit, under one versioned directory |
+| `starter-postgres_1.2.3_sbom.spdx.json` | SPDX 2.3 packages from the consistent committed `go.mod`, `go.sum`, and `vendor/modules.txt` graph |
+| `checksums.txt` | SHA-256 of the source archive and SBOM, sorted by filename |
+| `checksums.txt.sig` | Raw Ed25519 signature of the exact checksum bytes |
+| `checksums.txt.pem` | X.509 SubjectPublicKeyInfo PEM for signature verification |
 
-- `starter-postgres_0.1.0_source.tar.gz`, containing every file in the exact
-  committed `HEAD` tree under the single `starter-postgres-0.1.0/` prefix;
-- `starter-postgres_0.1.0_sbom.spdx.json`, an SPDX 2.3 document for the root
-  module and every exact module in the committed vendor graph;
-- `checksums.txt`, with SHA-256 hashes for the source archive and SBOM;
-- `checksums.txt.sig`, a raw Ed25519 signature over the exact checksum file;
-- `checksums.txt.pem`, the matching public key.
+The source archive is reconstructed from the full commit's `git ls-tree`
+identity and exact object bytes read through `git cat-file --batch`. It never
+uses checkout filters or `git archive`, so `core.autocrlf` and host line-ending
+settings cannot alter an artifact. Every tar and gzip timestamp is the source
+commit epoch; paths are relative, ownership is zeroed, executable modes and
+validated symlinks are preserved, and gzip output is deterministic. Gitlinks
+and unsupported modes fail closed. Dirty or untracked workspace files cannot
+enter the archive. The SBOM creation time uses the same epoch and contains no
+absolute checkout path. Construction fails when committed module selection,
+checksums, and vendored versions or replacements disagree; the builder does
+not rely on an earlier verifier to detect a stale dependency graph.
 
-Archive ordering, paths, executable modes, safe relative symlinks, tar/PAX
-headers, gzip headers, and SPDX creation time are derived only from sorted
-`HEAD` tree objects and the source commit epoch. Gitlinks, unsafe paths, and
-symlinks that escape the archive root fail closed.
-Generated metadata contains no current time or absolute workspace path. The
-builder performs no dependency resolution or network access. It refuses stale
-vendor metadata, unsafe tracked paths, an existing output directory, or partial
-output: artifacts are staged and renamed only after the complete build succeeds.
+## Protected production ceremony
 
-Production mode fails closed unless the checkout is completely clean, `HEAD`
-has the exact requested canonical `vX.Y.Z` tag, the supplied source epoch equals
-the tagged commit epoch, and an Ed25519 private key is supplied. Even untracked
-files make a production checkout dirty.
+The pinned central workflow validates the exact canonical tag and commit,
+repeats `make verify-release` without credentials, renders deterministic
+artifacts, signs them, and passes them to a separate verifier before publishing.
+No repository-local release builder exists. The immutable central renderer is
+the sole production implementation.
 
-`-rehearsal` is an explicit local exception. A rehearsal is always unsigned,
-may be untagged or dirty, and rejects `-signing-key` rather than producing an
-artifact that could be confused with a production release:
-
-```text
-go run ./cmd/starter-postgres-release -rehearsal -version v0.1.0-rc.1 -output dist-rehearsal
-```
-
-Even in a dirty rehearsal, the source archive contains committed `HEAD` bytes,
-not uncommitted worktree or index content.
-
-## Unsigned dual-builder rehearsal
-
-The library module authorizes an exact central renderer through its
-`go.mod` tool directive. `make release-parity` runs that fully qualified tool
-and the retained repository builder twice each with `GOWORK=off`,
-`GOPROXY=off`, `GOTOOLCHAIN=local`, and `GOFLAGS=-mod=vendor`. It first asks the
-central tool for a read-only plan and then renders the plan without resolving
-an ambient workspace or downloading a module.
-
-The central signer is the protected production path. The retained repository
-builder remains only the parity oracle:
-
-```text
-make release-parity
-```
-
-Both rehearsals are unsigned, deterministic across two independent outputs,
-and archive the exact committed `HEAD` tree. The older retained builder and the
-central renderer intentionally spell the single archive root differently:
-`starter-postgres-VERSION/` and `starter-postgres_VERSION/`, respectively.
-Parity therefore decodes both PAX archives, normalizes only those exact
-prefixes, and requires identical entry order, paths, modes, types, links,
-sizes, timestamps, extended records, gzip metadata, and content hashes. It
-does not claim the compressed archives are byte-identical.
-
-The SPDX documents must contain the same package facts and dependency
-relationships after semantic ordering. These R1 differences are intentional
-and validated explicitly:
-
-- document name (`Spice PostgreSQL Starter VERSION` retained and
-  `starter-postgres VERSION` centrally);
-- namespace identity (the central namespace includes `spdx/v1/`);
-- tool creator identifying the actual builder;
-- package and relationship ordering; and
-- the central document's one `DESCRIBES` relationship, which the retained R1
-  builder predates and omits.
-
-Both builders use `Organization: Spice Framework`; changing that value is not
-an allowed provenance difference. Every other decoded SPDX field must match.
-Each checksum file must canonically verify its own archive and SBOM. Because
-both payloads have documented differences, checksum files are not expected to
-be byte-identical. Extra artifacts, signatures, malformed checksums, archive
-entry drift, or undocumented SBOM drift fail closed.
-
-`make verify-release` runs this dual-builder proof. The retained command stays
-in the repository for that proof but is not called by the production workflow.
-
-## Signing and verification
-
-Generate an offline Ed25519 PKCS#8 key and keep it outside the repository:
-
-```text
-openssl genpkey -algorithm ED25519 -out starter-postgres-release-key.pem
-```
-
-This repository owns a distinct public trust anchor at
-`security/release/ed25519-public.pem`. Its SHA-256 fingerprint is
+This repository's reviewed public Ed25519 trust anchor is committed at
+`security/release/ed25519-public.pem`. Its SHA-256 fingerprint over the DER
+SubjectPublicKeyInfo bytes is
 `cc42428a74b539af7f6975d84b63c830267ac227062fc412970fc5ad586b7e65`.
-Review that fingerprint independently. The matching private key is stored only
-as the repository Actions secret `SPICE_LIBRARY_RELEASE_SIGNING_KEY`; it is
-never copied into source, an environment secret, SBOM, logs, or release output.
-The caller forwards exactly that named secret to the pinned reusable workflow,
-and broad `secrets: inherit` forwarding is forbidden.
+Store only the matching private key as the repository Actions secret
+`SPICE_LIBRARY_RELEASE_SIGNING_KEY`. Configure protected `release-signing` and
+`release-publish` environments for the signing approval and write-capable final
+job. Both environments should require the repository's designated reviewers.
 
-The protected `release-signing` and `release-publish` environments retain their
-required reviewers and tag branch policies. The reusable workflow attaches the
-secret-consuming signing job to `release-signing`; validation, planning,
-independent verification, and publication cannot read the private key. Do not
-create or push any release tag until the repository secret, both environments,
-required reviewers, and reviewed public anchor are confirmed. These controls
-do not by themselves mean a signed release exists.
+Do not create or push a release tag until the matching private signing secret
+and both protected environments are configured. Committing the public anchor
+does not assert that those controls, a tag, or a release exist. The caller
+forwards exactly one explicitly named signing secret; broad `secrets: inherit`
+forwarding is forbidden. The reusable workflow references that secret only in
+its protected `release-signing` job. Validation, planning, independent
+verification, and publishing cannot read it. The workflow fails closed on a
+missing key, an anchor mismatch, a moved tag, or independent verification
+failure.
 
-Verify downloaded assets before use:
+## Unsigned deterministic rehearsal
+
+The application module authorizes an exact central renderer through its
+`go.mod` tool directive. `make release-rehearsal` asks that fully qualified tool
+for one read-only plan, then renders the same plan twice with `GOWORK=off`,
+`GOPROXY=off`, `GOTOOLCHAIN=local`, and `GOFLAGS=-mod=vendor`:
 
 ```text
-openssl pkeyutl -verify -pubin -inkey checksums.txt.pem -rawin -in checksums.txt -sigfile checksums.txt.sig
-sha256sum -c checksums.txt
+make release-rehearsal
 ```
 
-Consumers must authenticate `checksums.txt.sig` against the reviewed committed
+Both renders are unsigned and always archive `HEAD`, never working-tree
+contents. Every artifact must be byte-identical, the checksum file must
+canonically authenticate its archive and SBOM, the SPDX document must carry
+the renderer/v1 provenance, and neither output may contain a signature or
+public key. The gate fails closed on an extra artifact, dependency drift,
+malformed checksum, provenance drift, or nondeterministic output.
+
+`make verify-release` executes this deterministic rehearsal after the complete
+repository verification contract.
+
+## Consumer verification
+
+With OpenSSL 3 and GNU-compatible checksum tooling:
+
+```text
+sha256sum -c checksums.txt
+openssl pkeyutl -verify -pubin -inkey checksums.txt.pem \
+  -rawin -in checksums.txt -sigfile checksums.txt.sig
+```
+
+Consumers must authenticate the signature with the reviewed committed
 `security/release/ed25519-public.pem`, not an untrusted key downloaded beside
-the release. The central workflow refuses a signing key that does not match
-that trust anchor, and an independent tool verifies the complete artifact set
+the release. The central signer refuses a private key that does not match that
+anchor, and the independent verifier authenticates the complete artifact set
 before the protected publish job receives it.
-
-PowerShell users can compare the first checksum column with
-`Get-FileHash -Algorithm SHA256` for each named artifact.
-
-## Release ceremony
-
-1. Confirm the committed public-key fingerprint, repository Actions secret, and both protected environments are active.
-2. Run `make verify` once on the final clean commit, then `make verify-release`.
-3. Create and push an annotated canonical `vX.Y.Z` tag.
-4. The pinned central workflow validates the exact tag, signs with the protected
-   key, independently authenticates the result, and publishes only the verified
-   artifact set from `release-publish`.
-5. Download the published assets and independently verify the signature,
-   checksums, source prefix, and SPDX document.
-
-GitHub is the distribution mirror; the same repository command constructs
-identical artifacts offline on Windows, Linux, and macOS.

@@ -41,7 +41,7 @@ Go 1.26.5 is mandatory:
 
 ```text
 make check
-make release-parity
+make release-rehearsal
 make verify
 make verify-release
 ```
@@ -60,12 +60,11 @@ build or rewrite `go.mod`, `go.sum`, or `vendor`:
 make compatibility
 ```
 
-Release parity runs the exact `spice-dev` tool authorized by `go.mod` and the
-retained repository builder twice each, entirely from `vendor` with network and
-workspace resolution disabled. It compares archive entries after normalizing
-only the builders' documented root-directory spelling, requires equivalent
-SBOM package and dependency facts, verifies both checksum files, and forbids
-rehearsal signatures on Windows and Linux.
+Release rehearsal runs the exact `spice-dev` tool authorized by `go.mod`
+twice from one inert plan, entirely from `vendor` with network and workspace
+resolution disabled. It requires byte-identical outputs, canonical checksums,
+central-renderer SPDX provenance, and no rehearsal signatures on Windows and
+Linux.
 
 `make verify` includes both compatibility lines and one execution of the local
 quality gate. Hosted CI runs the two compatibility lines independently so they
@@ -93,9 +92,7 @@ See [the dependency review](docs/dependency-review.md) and
 The repository builds deterministic source-only releases with an SPDX 2.3
 SBOM, SHA-256 checksums, and Ed25519 signatures. See the exact artifact and
 clean-tag ceremony in [the release guide](docs/releasing.md).
-The reviewed public trust anchor is committed with fingerprint
+The reviewed public trust anchor is committed with DER SHA-256 fingerprint
 `cc42428a74b539af7f6975d84b63c830267ac227062fc412970fc5ad586b7e65`;
-no signed release is implied until the protected release ceremony completes.
-The retained repository builder and signed production workflow remain the
-release authority while the centrally rendered unsigned candidate is held to
-the dual-builder parity contract.
+release claims are made only by a GitHub Release produced through the protected
+ceremony. The protected central workflow is the sole release authority.

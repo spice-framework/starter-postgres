@@ -89,8 +89,8 @@ jobs:
           SPICE_POSTGRES_TEST_URL: postgres://postgres:spice-test@127.0.0.1:5432/spice?sslmode=disable
         run: go test -tags=integration -race -shuffle=on -count=1 ./...
 
-  release-parity:
-    name: Release parity (${{ matrix.os }})
+  release-rehearsal:
+    name: Release rehearsal (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -113,13 +113,13 @@ jobs:
         with:
           go-version: 1.26.5
           cache: false
-      - name: Compare central and retained release builders
-        run: go run ./internal/qualitygate -mode=release-parity
+      - name: Prove deterministic central release rendering
+        run: go run ./internal/qualitygate -mode=release-rehearsal
 
   required:
     name: Required CI
     if: always()
-    needs: [verify, quality, core-compatibility, postgres, release-parity]
+    needs: [verify, quality, core-compatibility, postgres, release-rehearsal]
     runs-on: ubuntu-latest
     steps:
       - name: Require every CI job to pass
@@ -128,10 +128,10 @@ jobs:
           QUALITY_RESULT: ${{ needs.quality.result }}
           CORE_COMPATIBILITY_RESULT: ${{ needs.core-compatibility.result }}
           POSTGRES_RESULT: ${{ needs.postgres.result }}
-          RELEASE_PARITY_RESULT: ${{ needs.release-parity.result }}
+          RELEASE_REHEARSAL_RESULT: ${{ needs.release-rehearsal.result }}
         run: |
           test "$VERIFY_RESULT" = "success"
           test "$QUALITY_RESULT" = "success"
           test "$CORE_COMPATIBILITY_RESULT" = "success"
           test "$POSTGRES_RESULT" = "success"
-          test "$RELEASE_PARITY_RESULT" = "success"
+          test "$RELEASE_REHEARSAL_RESULT" = "success"
