@@ -19,16 +19,16 @@ import (
 
 const maximumPlanBytes = 64 << 10
 
-// Result describes one atomically committed unsigned release directory.
+// Result describes one atomically committed release directory.
 type Result struct {
 	OutputDir string
 	Files     []string
 }
 
-// ParsePlan strictly decodes a renderer plan. Persisted provenance fields are
-// intentionally not authoritative: Render reconstructs them from the current
-// catalog, the checkout's origin, and the selected commit before any output is
-// created.
+// ParsePlan strictly decodes a release plan. Persisted provenance fields are
+// intentionally not authoritative: rendering or signing reconstructs them from
+// the current catalog, checkout origin, and selected commit before creating
+// output.
 func ParsePlan(content []byte) (Plan, error) {
 	if len(content) > maximumPlanBytes {
 		return Plan{}, fmt.Errorf("library release plan exceeds %d bytes", maximumPlanBytes)
@@ -111,37 +111,128 @@ func Render(
 	outputDirectory string,
 	plan Plan,
 	value catalog.Catalog,
-) (result Result, resultErr error) {
+) (Result, error) {
+	prepared, err := prepareRelease(ctx, repositoryRoot, plan, value, "rehearsal")
+	if err != nil {
+		return Result{}, err
+	}
+	artifacts, err := renderArtifacts(ctx, prepared.plan, prepared.tree)
+	if err != nil {
+		return Result{}, err
+	}
+	return commitReleaseArtifacts(outputDirectory, prepared.plan, artifacts, nil)
+}
+
+// Sign creates one deterministic production release from exact committed
+// objects, authenticates the signing key against a separately trusted public
+// key, revalidates the clean exact-tagged checkout, and atomically commits five
+// artifacts without replacing an existing output directory.
+func Sign(
+	ctx context.Context,
+	repositoryRoot string,
+	outputDirectory string,
+	plan Plan,
+	value catalog.Catalog,
+	files SigningFiles,
+) (Result, error) {
+	prepared, err := prepareRelease(ctx, repositoryRoot, plan, value, "production")
+	if err != nil {
+		return Result{}, err
+	}
+	if err := requireOutsideRepository(prepared.root, outputDirectory, "production output"); err != nil {
+		return Result{}, err
+	}
+	if err := requireOutsideRepository(prepared.root, files.PrivateKey, "release private key"); err != nil {
+		return Result{}, err
+	}
+	artifacts, err := renderArtifacts(ctx, prepared.plan, prepared.tree)
+	if err != nil {
+		return Result{}, err
+	}
+	material, err := loadSigningMaterial(files)
+	if err != nil {
+		return Result{}, err
+	}
+	defer material.clear()
+	signature, publicPEM, err := material.sign(artifacts["checksums.txt"])
+	if err != nil {
+		return Result{}, err
+	}
+	artifacts["checksums.txt.pem"] = publicPEM
+	artifacts["checksums.txt.sig"] = signature
+	return commitReleaseArtifacts(
+		outputDirectory,
+		prepared.plan,
+		artifacts,
+		func() error {
+			return validateProductionState(ctx, prepared.root, prepared.plan)
+		},
+	)
+}
+
+type preparedRelease struct {
+	root string
+	plan Plan
+	tree committedTree
+}
+
+func prepareRelease(
+	ctx context.Context,
+	repositoryRoot string,
+	plan Plan,
+	value catalog.Catalog,
+	mode string,
+) (preparedRelease, error) {
 	if ctx == nil {
-		return Result{}, errors.New("render library release: context must not be nil")
+		return preparedRelease{}, errors.New("render library release: context must not be nil")
 	}
 	if err := validatePersistedPlan(plan); err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
+	}
+	if plan.Mode != mode {
+		return preparedRelease{}, fmt.Errorf("library release %s requires a %s plan", mode, mode)
 	}
 	if err := value.Validate(); err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
 	}
 	root, err := libraryDirectory(repositoryRoot)
 	if err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
 	}
-	if err := validateCommitEpoch(ctx, root, plan); err != nil {
-		return Result{}, err
+	if mode == "production" {
+		if err := validateProductionState(ctx, root, plan); err != nil {
+			return preparedRelease{}, err
+		}
+	} else if err := validateCommitEpoch(ctx, root, plan); err != nil {
+		return preparedRelease{}, err
 	}
 	tree, err := readCommittedTree(ctx, root, plan.Commit)
 	if err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
 	}
 	plan, err = rebindPlanProvenance(ctx, root, plan, value, tree)
 	if err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
 	}
 	if err := validateRenderPlan(plan); err != nil {
-		return Result{}, err
+		return preparedRelease{}, err
 	}
-	artifacts, err := renderArtifacts(ctx, plan, tree)
-	if err != nil {
-		return Result{}, err
+	return preparedRelease{root: root, plan: plan, tree: tree}, nil
+}
+
+func commitReleaseArtifacts(
+	outputDirectory string,
+	plan Plan,
+	artifacts map[string][]byte,
+	beforeCommit func() error,
+) (result Result, resultErr error) {
+	files := make([]string, 0, len(artifacts))
+	for name := range artifacts {
+		files = append(files, name)
+	}
+	slices.Sort(files)
+	if !slices.Equal(files, plan.Artifacts) {
+		return Result{}, errors.New("rendered artifacts do not match the validated plan")
 	}
 	output, staging, err := prepareStaging(outputDirectory)
 	if err != nil {
@@ -153,16 +244,15 @@ func Render(
 			resultErr = errors.Join(resultErr, os.RemoveAll(staging))
 		}
 	}()
-	files := make([]string, 0, len(artifacts))
-	for name, content := range artifacts {
-		if err := writeNewArtifact(staging, name, content); err != nil {
+	for _, name := range files {
+		if err := writeNewArtifact(staging, name, artifacts[name]); err != nil {
 			return Result{}, err
 		}
-		files = append(files, name)
 	}
-	slices.Sort(files)
-	if !slices.Equal(files, plan.Artifacts) {
-		return Result{}, errors.New("rendered artifacts do not match the validated plan")
+	if beforeCommit != nil {
+		if err := beforeCommit(); err != nil {
+			return Result{}, err
+		}
 	}
 	if err := commitStaging(staging, output); err != nil {
 		return Result{}, err
@@ -171,15 +261,15 @@ func Render(
 	return Result{OutputDir: output, Files: files}, nil
 }
 
-// validatePersistedPlan checks only fields that a persisted rehearsal plan is
-// allowed to authorize. All descriptive and derived fields are untrusted until
+// validatePersistedPlan checks only fields that a persisted plan is allowed to
+// authorize. All descriptive and derived fields are untrusted until
 // rebindPlanProvenance reconstructs them.
 func validatePersistedPlan(plan Plan) error {
 	if plan.Schema != PlanSchema {
 		return fmt.Errorf("library release plan schema %d is unsupported", plan.Schema)
 	}
-	if plan.Mode != "rehearsal" {
-		return errors.New("unsigned renderer requires an explicit rehearsal plan")
+	if plan.Mode != "rehearsal" && plan.Mode != "production" {
+		return fmt.Errorf("library release plan mode %q is unsupported", plan.Mode)
 	}
 	if !catalogVersion(plan.Version) || !commitPattern.MatchString(plan.Commit) ||
 		plan.SourceDateEpoch <= 0 {
@@ -237,7 +327,7 @@ func rebindPlanProvenance(
 	plan.RequiredFiles = slices.Clone(requiredFiles)
 	plan.RequiredFiles = append(plan.RequiredFiles, value.StarterCompatibility.MetadataFile)
 	slices.Sort(plan.RequiredFiles)
-	plan.Artifacts = artifactNames(repository.Name, plan.Version, false)
+	plan.Artifacts = artifactNames(repository.Name, plan.Version, plan.Mode == "production")
 	return plan, nil
 }
 
@@ -325,7 +415,7 @@ func validateRenderPlan(plan Plan) error {
 	if !slices.Equal(plan.RequiredFiles, wantRequired) {
 		return fmt.Errorf("library release required files %v do not match schema contract %v", plan.RequiredFiles, wantRequired)
 	}
-	wantArtifacts := artifactNames(plan.Repository, plan.Version, false)
+	wantArtifacts := artifactNames(plan.Repository, plan.Version, plan.Mode == "production")
 	if !slices.Equal(plan.Artifacts, wantArtifacts) {
 		return fmt.Errorf("library release artifacts %v do not match contract %v", plan.Artifacts, wantArtifacts)
 	}

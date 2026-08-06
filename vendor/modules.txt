@@ -22,7 +22,7 @@ github.com/jackc/pgx/v5/stdlib
 ## explicit; go 1.19
 github.com/jackc/puddle/v2
 github.com/jackc/puddle/v2/internal/genstack
-# github.com/spice-framework/development v0.0.0-20260806034648-1856466df09d
+# github.com/spice-framework/development v0.0.0-20260806052122-9025218a91c0
 ## explicit; go 1.26.0
 github.com/spice-framework/development/cmd/spice-dev
 github.com/spice-framework/development/internal/bootstrap
@@ -33,7 +33,7 @@ github.com/spice-framework/development/internal/libraryrelease
 github.com/spice-framework/development/internal/process
 github.com/spice-framework/development/internal/verify
 github.com/spice-framework/development/internal/workspace
-# github.com/spice-framework/spice v0.0.0-20260805175412-383c17744300
+# github.com/spice-framework/spice v0.0.0-20260805222830-a2ecd56df246
 ## explicit; go 1.26.0
 github.com/spice-framework/spice/annotation
 github.com/spice-framework/spice/annotation/sdk/starter
@@ -47,6 +47,17 @@ github.com/spice-framework/spice/migration
 github.com/spice-framework/spice/spicetest
 github.com/spice-framework/spice/validation
 github.com/spice-framework/spice/web
+# github.com/spice-framework/toolchain v0.0.0-20260806054457-a83d9b58034c
+## explicit; go 1.26.0
+github.com/spice-framework/toolchain/cmd/spice-library-release-verify
+github.com/spice-framework/toolchain/internal/gitenv
+github.com/spice-framework/toolchain/internal/libraryreleaseverify
+# golang.org/x/mod v0.38.0
+## explicit; go 1.25.0
+golang.org/x/mod/internal/lazyregexp
+golang.org/x/mod/modfile
+golang.org/x/mod/module
+golang.org/x/mod/semver
 # golang.org/x/sync v0.22.0
 ## explicit; go 1.25.0
 golang.org/x/sync/semaphore

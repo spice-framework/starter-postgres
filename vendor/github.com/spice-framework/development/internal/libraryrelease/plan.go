@@ -318,19 +318,19 @@ func validateProduction(
 	if strings.TrimSpace(status) != "" {
 		return errors.New("production release checkout must be clean, including untracked files")
 	}
-	tagCommit, err := runner.Run(ctx, directory, "git", "rev-list", "-n", "1", version)
+	tagCommit, err := runner.Run(
+		ctx,
+		directory,
+		"git",
+		"rev-parse",
+		"--verify",
+		"refs/tags/"+version+"^{commit}",
+	)
 	if err != nil {
 		return fmt.Errorf("resolve release tag %q: %w", version, err)
 	}
 	if strings.TrimSpace(tagCommit) != commit {
 		return fmt.Errorf("release tag %q does not resolve to HEAD", version)
-	}
-	tags, err := runner.Run(ctx, directory, "git", "tag", "--points-at", commit)
-	if err != nil {
-		return fmt.Errorf("inspect release tags: %w", err)
-	}
-	if !slices.Contains(strings.Fields(tags), version) {
-		return fmt.Errorf("release HEAD is not tagged exactly %q", version)
 	}
 	return nil
 }

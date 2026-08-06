@@ -17,10 +17,13 @@ import (
 func TestValidateReleaseToolAuthorization(t *testing.T) {
 	t.Parallel()
 	valid := fmt.Sprintf(
-		`{"Require":[{"Path":%q,"Version":%q}],"Tool":[{"Path":%q}]}`,
+		`{"Require":[{"Path":%q,"Version":%q},{"Path":%q,"Version":%q}],"Tool":[{"Path":%q},{"Path":%q}]}`,
 		developmentModule,
 		developmentVersion,
+		toolchainModule,
+		toolchainVersion,
 		developmentTool,
+		releaseVerifierTool,
 	)
 	tests := []struct {
 		name    string
@@ -28,23 +31,53 @@ func TestValidateReleaseToolAuthorization(t *testing.T) {
 		wantErr string
 	}{
 		{name: "exact authorization", content: valid},
-		{name: "missing tool", content: `{"Require":[]}`, wantErr: "exactly one"},
 		{
-			name: "wrong version",
+			name: "missing development tool",
 			content: fmt.Sprintf(
-				`{"Require":[{"Path":%q,"Version":"v0.0.0-wrong"}],"Tool":[{"Path":%q}]}`,
-				developmentModule,
-				developmentTool,
+				`{"Require":[{"Path":%q,"Version":%q},{"Path":%q,"Version":%q}],"Tool":[{"Path":%q}]}`,
+				developmentModule, developmentVersion, toolchainModule, toolchainVersion, releaseVerifierTool,
+			),
+			wantErr: developmentTool,
+		},
+		{
+			name: "missing verifier tool",
+			content: fmt.Sprintf(
+				`{"Require":[{"Path":%q,"Version":%q},{"Path":%q,"Version":%q}],"Tool":[{"Path":%q}]}`,
+				developmentModule, developmentVersion, toolchainModule, toolchainVersion, developmentTool,
+			),
+			wantErr: releaseVerifierTool,
+		},
+		{
+			name: "wrong development version",
+			content: fmt.Sprintf(
+				`{"Require":[{"Path":%q,"Version":"v0.0.0-wrong"},{"Path":%q,"Version":%q}],"Tool":[{"Path":%q},{"Path":%q}]}`,
+				developmentModule, toolchainModule, toolchainVersion, developmentTool, releaseVerifierTool,
 			),
 			wantErr: "require exactly " + developmentVersion,
 		},
 		{
-			name: "missing requirement",
+			name: "wrong verifier version",
 			content: fmt.Sprintf(
-				`{"Require":[],"Tool":[{"Path":%q}]}`,
-				developmentTool,
+				`{"Require":[{"Path":%q,"Version":%q},{"Path":%q,"Version":"v0.0.0-wrong"}],"Tool":[{"Path":%q},{"Path":%q}]}`,
+				developmentModule, developmentVersion, toolchainModule, developmentTool, releaseVerifierTool,
+			),
+			wantErr: "require exactly " + toolchainVersion,
+		},
+		{
+			name: "missing development requirement",
+			content: fmt.Sprintf(
+				`{"Require":[{"Path":%q,"Version":%q}],"Tool":[{"Path":%q},{"Path":%q}]}`,
+				toolchainModule, toolchainVersion, developmentTool, releaseVerifierTool,
 			),
 			wantErr: "must require " + developmentModule,
+		},
+		{
+			name: "missing verifier requirement",
+			content: fmt.Sprintf(
+				`{"Require":[{"Path":%q,"Version":%q}],"Tool":[{"Path":%q},{"Path":%q}]}`,
+				developmentModule, developmentVersion, developmentTool, releaseVerifierTool,
+			),
+			wantErr: "must require " + toolchainModule,
 		},
 		{name: "malformed metadata", content: `{`, wantErr: "decode release tool authorization"},
 	}

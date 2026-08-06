@@ -91,13 +91,18 @@ func (runtime Runtime) libraryReleaseCommand(
 	stderr io.Writer,
 ) int {
 	if len(arguments) == 0 {
-		return usageError(stderr, "library-release requires the plan or render subcommand")
+		return usageError(stderr, "library-release requires the plan, public-key, render, or sign subcommand")
 	}
-	if arguments[0] == "render" {
+	switch arguments[0] {
+	case "public-key":
+		return runtime.libraryReleasePublicKeyCommand(ctx, arguments[1:], stdout, stderr)
+	case "render":
 		return runtime.libraryReleaseRenderCommand(ctx, arguments[1:], stdout, stderr)
-	}
-	if arguments[0] != "plan" {
-		return usageError(stderr, "library-release requires the plan or render subcommand")
+	case "sign":
+		return runtime.libraryReleaseSignCommand(ctx, arguments[1:], stdout, stderr)
+	case "plan":
+	default:
+		return usageError(stderr, "library-release requires the plan, public-key, render, or sign subcommand")
 	}
 	flags := flag.NewFlagSet("library-release plan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -124,6 +129,81 @@ func (runtime Runtime) libraryReleaseCommand(
 		return commandError(stderr, "library-release plan", err)
 	}
 	if _, err := stdout.Write(append(content, '\n')); err != nil {
+		return 1
+	}
+	return 0
+}
+
+func (runtime Runtime) libraryReleasePublicKeyCommand(
+	ctx context.Context,
+	arguments []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) int {
+	flags := flag.NewFlagSet("library-release public-key", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	privateKey := flags.String("signing-key", "", "existing Ed25519 private-key file")
+	output := flags.String("output", "", "new canonical Ed25519 public-key PEM file")
+	if err := flags.Parse(arguments); err != nil {
+		return flagCode(err)
+	}
+	if flags.NArg() != 0 {
+		return usageError(stderr, "library-release public-key accepts no positional arguments")
+	}
+	written, err := libraryrelease.WritePublicKey(ctx, *privateKey, *output)
+	if err != nil {
+		return commandError(stderr, "library-release public-key", err)
+	}
+	if _, err := fmt.Fprintf(stdout, "%s\tEd25519 PKIX public key\n", written); err != nil {
+		return 1
+	}
+	return 0
+}
+
+func (runtime Runtime) libraryReleaseSignCommand(
+	ctx context.Context,
+	arguments []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) int {
+	flags := flag.NewFlagSet("library-release sign", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	root := flags.String("root", "", "library repository root")
+	planFile := flags.String("plan", "", "validated production release plan JSON file")
+	output := flags.String("output", "", "new release output directory outside the repository")
+	privateKey := flags.String("signing-key", "", "Ed25519 private-key file outside the repository")
+	publicKey := flags.String("trusted-public-key", "", "independently trusted Ed25519 public-key PEM file")
+	if err := flags.Parse(arguments); err != nil {
+		return flagCode(err)
+	}
+	if flags.NArg() != 0 {
+		return usageError(stderr, "library-release sign accepts no positional arguments")
+	}
+	plan, err := libraryrelease.LoadPlan(*planFile)
+	if err != nil {
+		return commandError(stderr, "library-release sign", err)
+	}
+	result, err := libraryrelease.Sign(
+		ctx,
+		*root,
+		*output,
+		plan,
+		runtime.Catalog,
+		libraryrelease.SigningFiles{
+			PrivateKey:       *privateKey,
+			TrustedPublicKey: *publicKey,
+		},
+	)
+	if err != nil {
+		return commandError(stderr, "library-release sign", err)
+	}
+	if _, err := fmt.Fprintf(
+		stdout,
+		"%s\t%s\t%d signed artifact(s)\n",
+		result.OutputDir,
+		plan.Commit,
+		len(result.Files),
+	); err != nil {
 		return 1
 	}
 	return 0
@@ -356,7 +436,9 @@ Usage:
   spice-dev workspace --root path [--check]
   spice-dev verify --root path [--full] [--jobs n] [--repo name ...]
   spice-dev library-release plan --root path --repo name --version vX.Y.Z [--rehearsal]
+  spice-dev library-release public-key --signing-key external-private-key --output new-public.pem
   spice-dev library-release render --root path --plan plan.json --output new-path
+  spice-dev library-release sign --root path --plan plan.json --output new-path --signing-key key --trusted-public-key public.pem
 `)
 	return err
 }

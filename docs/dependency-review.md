@@ -47,13 +47,17 @@ Primary references:
 - <https://pkg.go.dev/github.com/jackc/pgx/v5/stdlib>
 - <https://hub.docker.com/_/postgres>
 
-## Build-only dependency: Spice development release renderer
+## Build-only dependencies: central Spice release tools
 
 - Decision: approved only as the repository-authorized release-parity tool.
 - Version: `github.com/spice-framework/development`
-  `v0.0.0-20260806034648-1856466df09d`.
+  `v0.0.0-20260806052122-9025218a91c0`.
 - Tool: `github.com/spice-framework/development/cmd/spice-dev` through the
   standard Go `tool` directive; invocations always use the full package path.
+- Verifier: `github.com/spice-framework/toolchain/cmd/spice-library-release-verify`
+  from `github.com/spice-framework/toolchain`
+  `v0.0.0-20260806054457-a83d9b58034c`, also through the standard Go `tool`
+  directive.
 - License: Apache-2.0, with its notice retained in `vendor`.
 - Runtime scope: none. Product packages do not import the development module,
   and released applications acquire no runtime dependency on it.
@@ -64,9 +68,10 @@ Primary references:
   checksummed. Release parity runs with `GOWORK=off`, `GOPROXY=off`,
   `GOTOOLCHAIN=local`, and `GOFLAGS=-mod=vendor`, so it cannot select an ambient
   checkout, upgrade itself, or download dependencies.
-- Security: the trusted native tool reads the exact committed Git graph and
-  writes only to caller-supplied temporary output directories. The rehearsal
-  emits no signatures or signing material.
+- Security: the trusted native renderer reads the exact committed Git graph
+  and writes only to caller-supplied temporary output directories. The
+  independent verifier authenticates release artifacts against an external
+  trust anchor and exact Git objects. Neither tool generates private material.
 - Maintenance: the retained local builder and production signing workflow stay
   in place. A dual-builder gate detects central renderer regressions before any
   future authority migration.

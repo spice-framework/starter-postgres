@@ -1,20 +1,28 @@
-package libraryrelease
+package libraryreleaseverify
 
 import (
-	"context"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"reflect"
 	"strings"
 	"time"
 )
 
-const (
-	artifactSchemaVersion = 1
-	rendererIdentity      = "github.com/spice-framework/development/cmd/spice-dev library-release renderer/v1"
-	maximumSBOMBytes      = 1 << 20
-)
+const rendererIdentity = "github.com/spice-framework/development/cmd/spice-dev library-release renderer/v1"
+
+type sbomIdentity struct {
+	repository string
+	module     string
+	source     string
+	version    string
+	commit     string
+	epoch      time.Time
+}
 
 type spdxDocument struct {
 	SPDXVersion       string             `json:"spdxVersion"`
@@ -56,24 +64,36 @@ type spdxRelationship struct {
 	RelatedSPDXElement string `json:"relatedSpdxElement"`
 }
 
-func buildSBOM(
-	ctx context.Context,
-	plan Plan,
-	files map[string][]byte,
-) ([]byte, error) {
-	modules, err := committedModules(ctx, plan, files)
-	if err != nil {
-		return nil, err
+func verifySBOM(data []byte, identity sbomIdentity, modules []listedModule) error {
+	if err := rejectDuplicateJSONKeys(data); err != nil {
+		return fmt.Errorf("validate SPDX JSON object keys: %w", err)
 	}
-	rootID := packageID(plan.Module, plan.Version)
-	packages := []spdxPackage{newSPDXPackage(plan.Module, plan.Version, "")}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var actual spdxDocument
+	if err := decoder.Decode(&actual); err != nil {
+		return fmt.Errorf("decode SPDX document: %w", err)
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("SPDX document has trailing JSON content")
+	}
+	expected := expectedSBOM(identity, modules)
+	if !reflect.DeepEqual(actual, expected) {
+		return errors.New("SPDX document does not exactly match the trusted source module graph and renderer contract")
+	}
+	return nil
+}
+
+func expectedSBOM(identity sbomIdentity, modules []listedModule) spdxDocument {
+	rootID := packageSPDXID(identity.module, identity.version)
+	packages := []spdxPackage{newSPDXPackage(identity.module, identity.version, "")}
 	relationships := []spdxRelationship{{
 		SPDXElementID:      "SPDXRef-DOCUMENT",
 		RelationshipType:   "DESCRIBES",
 		RelatedSPDXElement: rootID,
 	}}
 	for _, module := range modules {
-		item := newSPDXPackage(module.Path, module.Version, module.Replace)
+		item := newSPDXPackage(module.path, module.version, module.replacement)
 		packages = append(packages, item)
 		relationships = append(relationships, spdxRelationship{
 			SPDXElementID:      rootID,
@@ -81,29 +101,27 @@ func buildSBOM(
 			RelatedSPDXElement: item.SPDXID,
 		})
 	}
-	var identity strings.Builder
+	var namespaceIdentity strings.Builder
 	fmt.Fprintf(
-		&identity,
+		&namespaceIdentity,
 		"plan=%d\nartifact=%d\nversion=%s\ncommit=%s",
-		plan.Schema,
-		artifactSchemaVersion,
-		plan.Version,
-		plan.Commit,
+		rendererV1PlanSchema,
+		rendererV1ArtifactSchema,
+		identity.version,
+		identity.commit,
 	)
 	for _, item := range packages {
-		fmt.Fprintf(&identity, "\n%s@%s", item.Name, item.VersionInfo)
+		fmt.Fprintf(&namespaceIdentity, "\n%s@%s", item.Name, item.VersionInfo)
 	}
-	namespaceHash := sha256.Sum256([]byte(identity.String()))
-	document := spdxDocument{
-		SPDXVersion: "SPDX-2.3",
-		DataLicense: "CC0-1.0",
-		SPDXID:      "SPDXRef-DOCUMENT",
-		Name:        plan.Repository + " " + plan.Version,
-		DocumentNamespace: strings.TrimSuffix(plan.Source, "/") + "/releases/" +
-			plan.Version + "/spdx/v" + fmt.Sprint(artifactSchemaVersion) + "/" +
-			hex.EncodeToString(namespaceHash[:]),
+	namespaceHash := sha256.Sum256([]byte(namespaceIdentity.String()))
+	return spdxDocument{
+		SPDXVersion:       "SPDX-2.3",
+		DataLicense:       "CC0-1.0",
+		SPDXID:            "SPDXRef-DOCUMENT",
+		Name:              identity.repository + " " + identity.version,
+		DocumentNamespace: strings.TrimSuffix(identity.source, "/") + "/releases/" + identity.version + "/spdx/v1/" + hex.EncodeToString(namespaceHash[:]),
 		CreationInfo: spdxCreationInfo{
-			Created: time.Unix(plan.SourceDateEpoch, 0).UTC().Format(time.RFC3339),
+			Created: identity.epoch.UTC().Format(time.RFC3339),
 			Creators: []string{
 				"Organization: Spice Framework",
 				"Tool: " + rendererIdentity,
@@ -112,20 +130,11 @@ func buildSBOM(
 		Packages:      packages,
 		Relationships: relationships,
 	}
-	content, err := json.MarshalIndent(document, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("encode release SBOM: %w", err)
-	}
-	content = append(content, '\n')
-	if err := requireControlFileLimit("release SBOM", content, maximumSBOMBytes); err != nil {
-		return nil, err
-	}
-	return content, nil
 }
 
-func newSPDXPackage(name string, version string, replacement string) spdxPackage {
+func newSPDXPackage(name, version, replacement string) spdxPackage {
 	item := spdxPackage{
-		Name: name, SPDXID: packageID(name, version), VersionInfo: version,
+		Name: name, SPDXID: packageSPDXID(name, version), VersionInfo: version,
 		DownloadLocation: "NOASSERTION", FilesAnalyzed: false,
 		LicenseConcluded: "NOASSERTION", LicenseDeclared: "NOASSERTION",
 		CopyrightText: "NOASSERTION",
@@ -140,7 +149,7 @@ func newSPDXPackage(name string, version string, replacement string) spdxPackage
 	return item
 }
 
-func packageID(name string, version string) string {
-	sum := sha256.Sum256([]byte(name + "@" + version))
-	return "SPDXRef-Package-" + hex.EncodeToString(sum[:8])
+func packageSPDXID(name, version string) string {
+	digest := sha256.Sum256([]byte(name + "@" + version))
+	return "SPDXRef-Package-" + hex.EncodeToString(digest[:8])
 }

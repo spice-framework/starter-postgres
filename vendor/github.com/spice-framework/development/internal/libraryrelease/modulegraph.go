@@ -70,6 +70,9 @@ func committedModules(
 	if !found {
 		return nil, errors.New("release source has no committed go.sum")
 	}
+	if err := requireControlFileLimit("committed go.sum", goSum, maximumModuleGraphBytes); err != nil {
+		return nil, err
+	}
 	if err := validateModuleSums(selected, goSum); err != nil {
 		return nil, err
 	}
@@ -91,6 +94,13 @@ func committedModules(
 		return strings.Compare(left.Path, right.Path)
 	})
 	return actual, nil
+}
+
+func requireControlFileLimit(name string, content []byte, maximum int) error {
+	if len(content) > maximum {
+		return fmt.Errorf("%s exceeds %d bytes", name, maximum)
+	}
+	return nil
 }
 
 func validateCoreCompatibility(modules []listedModule, plan Plan) error {
