@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    uses: spice-framework/.github/.github/workflows/go-verify.yml@130369b5162d2ae38084485f6639e75f2b6e382f
+    uses: spice-framework/.github/.github/workflows/go-verify.yml@0534fe1247f892b287f624b7abb6f2347765ab22
     with:
       go-version: 1.26.5
 
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Set up exact Go toolchain
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -45,6 +46,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - name: Set up exact Go toolchain
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -74,6 +77,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - name: Set up exact Go toolchain
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -102,6 +107,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Set up exact Go toolchain
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -109,3 +115,23 @@ jobs:
           cache: false
       - name: Compare central and retained release builders
         run: go run ./internal/qualitygate -mode=release-parity
+
+  required:
+    name: Required CI
+    if: always()
+    needs: [verify, quality, core-compatibility, postgres, release-parity]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI job to pass
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          CORE_COMPATIBILITY_RESULT: ${{ needs.core-compatibility.result }}
+          POSTGRES_RESULT: ${{ needs.postgres.result }}
+          RELEASE_PARITY_RESULT: ${{ needs.release-parity.result }}
+        run: |
+          test "$VERIFY_RESULT" = "success"
+          test "$QUALITY_RESULT" = "success"
+          test "$CORE_COMPATIBILITY_RESULT" = "success"
+          test "$POSTGRES_RESULT" = "success"
+          test "$RELEASE_PARITY_RESULT" = "success"
