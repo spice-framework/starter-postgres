@@ -12,7 +12,7 @@ jobs:
     name: Centrally verify, sign, and publish
     permissions:
       contents: write
-    uses: spice-framework/.github/.github/workflows/library-release.yml@37dbac1ce9a616574f899afcb531f2097c71855c
+    uses: spice-framework/.github/.github/workflows/library-release.yml@8b9fc5012de2f2e457ff13d3f1168a451da167fe
     secrets:
       SPICE_LIBRARY_RELEASE_SIGNING_KEY: ${{ secrets.SPICE_LIBRARY_RELEASE_SIGNING_KEY }}
     with:
