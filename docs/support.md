@@ -11,6 +11,7 @@
 | Real-system artifact | `postgres:18.4-alpine3.24` index digest `sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15` |
 | Release parity tool | `github.com/spice-framework/development/cmd/spice-dev` at `v0.0.0-20260806132124-4c308d1b9fda` |
 | Release verifier tool | `github.com/spice-framework/toolchain/cmd/spice-library-release-verify` at `v0.0.0-20260806133530-71211498297c` |
+| Release trust anchor | [`security/release/ed25519-public.pem`](../security/release/ed25519-public.pem), SHA-256 fingerprint `a84f6ffe579d5779274cebebb7bc3bdb9b4718cabb8a864ab477875875c16e17` |
 
 The first preview tag will define the first published minimum Spice version.
 Until then, `spice-compatibility.json` is the sole compatibility boundary
@@ -27,3 +28,8 @@ The pinned central signer and independent verifier are the protected production
 path. Windows and Linux CI still compare the central renderer with the retained
 builder under vendor-only offline resolution; the retained command is a parity
 oracle only.
+
+The reviewed public release anchor is committed and is safe to distribute. It
+does not mean a signed release exists: publication remains blocked until the
+matching private key and protected release environments are configured and the
+documented release ceremony completes.

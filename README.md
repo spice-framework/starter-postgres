@@ -93,6 +93,9 @@ See [the dependency review](docs/dependency-review.md) and
 The repository builds deterministic source-only releases with an SPDX 2.3
 SBOM, SHA-256 checksums, and Ed25519 signatures. See the exact artifact and
 clean-tag ceremony in [the release guide](docs/releasing.md).
+The reviewed public trust anchor is committed with fingerprint
+`a84f6ffe579d5779274cebebb7bc3bdb9b4718cabb8a864ab477875875c16e17`;
+no signed release is implied until the protected release ceremony completes.
 The retained repository builder and signed production workflow remain the
 release authority while the centrally rendered unsigned candidate is held to
 the dual-builder parity contract.

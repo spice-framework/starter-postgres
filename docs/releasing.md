@@ -97,12 +97,14 @@ Generate an offline Ed25519 PKCS#8 key and keep it outside the repository:
 openssl genpkey -algorithm ED25519 -out starter-postgres-release-key.pem
 ```
 
-This repository must own a distinct user-generated key; never reuse another
-library's key. Derive its public half with the pinned central tool, review it,
-and commit it as `security/release/ed25519-public.pem`. Store only the private
+This repository owns a distinct public trust anchor at
+`security/release/ed25519-public.pem`. Its SHA-256 fingerprint is
+`a84f6ffe579d5779274cebebb7bc3bdb9b4718cabb8a864ab477875875c16e17`.
+Review that fingerprint independently before configuring the matching private
 key as `SPICE_LIBRARY_RELEASE_SIGNING_KEY` in the protected `release-signing`
 environment. The private key is never copied into source, SBOM, logs, or
-release output.
+release output, and the committed public anchor does not by itself mean a
+signed release exists.
 
 The repository must also have a protected `release-publish` environment. Do
 not create or push any release tag until both environments, required reviewers,
@@ -128,7 +130,7 @@ PowerShell users can compare the first checksum column with
 
 ## Release ceremony
 
-1. Confirm the reviewed public key and both protected environments are active.
+1. Confirm the committed public-key fingerprint above and both protected environments are active.
 2. Run `make verify` once on the final clean commit, then `make verify-release`.
 3. Create and push an annotated canonical `vX.Y.Z` tag.
 4. The pinned central workflow validates the exact tag, signs with the protected
