@@ -23,7 +23,7 @@ import (
 const (
 	developmentModule        = "github.com/spice-framework/development"
 	developmentTool          = developmentModule + "/cmd/spice-dev"
-	developmentVersion       = "v0.0.0-20260806052122-9025218a91c0"
+	developmentVersion       = "v0.0.0-20260806121906-963bb6676069"
 	toolchainModule          = "github.com/spice-framework/toolchain"
 	releaseVerifierTool      = toolchainModule + "/cmd/spice-library-release-verify"
 	toolchainVersion         = "v0.0.0-20260806054457-a83d9b58034c"

@@ -10,7 +10,7 @@
     "metadata_file": "spice-compatibility.json",
     "metadata_schema": 1,
     "core_module": "github.com/spice-framework/spice",
-    "current_core": "v0.0.0-20260805222830-a2ecd56df246"
+    "current_core": "v0.0.0-20260806053623-2ec6f862073f"
   },
   "repositories": [
     {

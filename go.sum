@@ -11,8 +11,8 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/spice-framework/development v0.0.0-20260806052122-9025218a91c0 h1:b+QugHe9iGyDMbE+YueQIK2Q/JjAWw7f3BF/X3YplrI=
-github.com/spice-framework/development v0.0.0-20260806052122-9025218a91c0/go.mod h1:0lIxjVtv+p4iTrvLJm05OjimS2MSrIqM1xPR7Q0GHEg=
+github.com/spice-framework/development v0.0.0-20260806121906-963bb6676069 h1:3ZfZwoXihTJ9+N+v3aHLiHTPGpGa/fxr1ifCi0uGGNw=
+github.com/spice-framework/development v0.0.0-20260806121906-963bb6676069/go.mod h1:0lIxjVtv+p4iTrvLJm05OjimS2MSrIqM1xPR7Q0GHEg=
 github.com/spice-framework/spice v0.0.0-20260805222830-a2ecd56df246 h1:IAPcr8bmwyeNQWME5bUWg/NvDVGoBJY+TRumFXMPXR8=
 github.com/spice-framework/spice v0.0.0-20260805222830-a2ecd56df246/go.mod h1:dBZV5UZcbY6pzhfGNtvAwQIJ8YsFna+jf1SAlmukJfk=
 github.com/spice-framework/toolchain v0.0.0-20260806054457-a83d9b58034c h1:73YMuiirxQEEgdytN47xTFDtTWOoNdW7kSS+IV/WaHc=
