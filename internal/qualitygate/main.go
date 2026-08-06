@@ -34,7 +34,7 @@ func main() {
 }
 
 func execute() int {
-	mode := flag.String("mode", "verify", "verification mode: check, fmt, verify, or verify-release")
+	mode := flag.String("mode", "verify", "verification mode: check, fmt, release-parity, verify, or verify-release")
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
@@ -58,17 +58,22 @@ func run(ctx context.Context, root, mode string) error {
 	if runtime.Version() != requiredGoVersion {
 		return fmt.Errorf("go version is %s; require exactly %s", runtime.Version(), requiredGoVersion)
 	}
-	identity := step{"repository identity", func() error { return checkIdentity(root) }}
+	identity := step{"repository identity", func() error { return checkIdentity(ctx, root) }}
 	dependencies := step{"dependency preparation", func() error { return prepareDependencies(ctx, root) }}
 	formatting := step{"formatting", func() error { return format(ctx, root, false) }}
 	modules := step{"module and vendor", func() error { return checkModule(ctx, root) }}
 	vet := step{"go vet", func() error { return command(ctx, root, nil, "go", "vet", "./...") }}
+	release := step{"central and retained release parity", func() error {
+		return releaseParity(ctx, root)
+	}}
 	var steps []step
 	switch mode {
 	case "check":
 		steps = []step{identity, dependencies, formatting, modules, vet}
 	case "fmt":
 		steps = []step{{"formatting", func() error { return format(ctx, root, true) }}}
+	case "release-parity":
+		steps = []step{identity, release}
 	case "verify":
 		steps = []step{
 			identity,
@@ -82,10 +87,7 @@ func run(ctx context.Context, root, mode string) error {
 			{"offline vendor", func() error { return offline(ctx, root) }},
 		}
 	case "verify-release":
-		steps = []step{
-			identity,
-			{"source release contract", func() error { return releaseContract(ctx, root) }},
-		}
+		steps = []step{identity, release}
 	default:
 		return fmt.Errorf("unknown mode %q", mode)
 	}
@@ -117,7 +119,7 @@ func prepareDependencies(ctx context.Context, root string) error {
 	return networkCommand(ctx, root, "-C", "tools", "mod", "tidy", "-diff")
 }
 
-func checkIdentity(root string) error {
+func checkIdentity(ctx context.Context, root string) error {
 	content, err := os.ReadFile(filepath.Join(root, "go.mod")) // #nosec G304 -- root is repository-owned.
 	if err != nil {
 		return fmt.Errorf("read go.mod: %w", err)
@@ -128,7 +130,7 @@ func checkIdentity(root string) error {
 	if bytes.Contains(content, []byte("\nreplace ")) || bytes.Contains(content, []byte("\nreplace (")) {
 		return errors.New("committed go.mod must not contain replace directives")
 	}
-	return nil
+	return requireReleaseTool(ctx, root)
 }
 
 func format(ctx context.Context, root string, write bool) error {
@@ -319,53 +321,6 @@ func offline(ctx context.Context, root string) error {
 		return err
 	}
 	return command(ctx, root, environment, "go", "build", "-trimpath", "./...")
-}
-
-func releaseContract(ctx context.Context, root string) error {
-	if err := command(ctx, root, nil, "go", "test", "-count=1", "./internal/release", "./cmd/starter-postgres-release"); err != nil {
-		return err
-	}
-	parent, err := os.MkdirTemp("", "starter-postgres-release-contract-*")
-	if err != nil {
-		return fmt.Errorf("create release contract directory: %w", err)
-	}
-	defer removeTree(parent)
-	outputDir := filepath.Join(parent, "dist")
-	if runErr := command(
-		ctx,
-		root,
-		nil,
-		"go",
-		"run",
-		"./cmd/starter-postgres-release",
-		"-rehearsal",
-		"-version=v0.0.0-release-contract",
-		"-source-date-epoch=1788000000",
-		"-output="+outputDir,
-	); runErr != nil {
-		return runErr
-	}
-	entries, err := os.ReadDir(outputDir)
-	if err != nil {
-		return fmt.Errorf("read release contract artifacts: %w", err)
-	}
-	actual := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			return fmt.Errorf("release contract emitted unexpected directory %q", entry.Name())
-		}
-		actual = append(actual, entry.Name())
-	}
-	slices.Sort(actual)
-	expected := []string{
-		"checksums.txt",
-		"starter-postgres_0.0.0-release-contract_sbom.spdx.json",
-		"starter-postgres_0.0.0-release-contract_source.tar.gz",
-	}
-	if !slices.Equal(actual, expected) {
-		return fmt.Errorf("unsigned release rehearsal artifacts = %v; want %v", actual, expected)
-	}
-	return nil
 }
 
 func toolPath(ctx context.Context, root, name string) (string, error) {

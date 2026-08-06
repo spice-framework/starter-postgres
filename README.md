@@ -41,6 +41,7 @@ Go 1.26.5 is mandatory:
 
 ```text
 make check
+make release-parity
 make verify
 make verify-release
 ```
@@ -58,6 +59,13 @@ build or rewrite `go.mod`, `go.sum`, or `vendor`:
 ```text
 make compatibility
 ```
+
+Release parity runs the exact `spice-dev` tool authorized by `go.mod` and the
+retained repository builder twice each, entirely from `vendor` with network and
+workspace resolution disabled. It compares archive entries after normalizing
+only the builders' documented root-directory spelling, requires equivalent
+SBOM package and dependency facts, verifies both checksum files, and forbids
+rehearsal signatures on Windows and Linux.
 
 `make verify` includes both compatibility lines and one execution of the local
 quality gate. Hosted CI runs the two compatibility lines independently so they
@@ -85,3 +93,6 @@ See [the dependency review](docs/dependency-review.md) and
 The repository builds deterministic source-only releases with an SPDX 2.3
 SBOM, SHA-256 checksums, and Ed25519 signatures. See the exact artifact and
 clean-tag ceremony in [the release guide](docs/releasing.md).
+The retained repository builder and signed production workflow remain the
+release authority while the centrally rendered unsigned candidate is held to
+the dual-builder parity contract.

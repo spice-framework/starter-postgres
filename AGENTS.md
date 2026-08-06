@@ -14,3 +14,10 @@ The normal gate is offline after dependencies are cached. Docker-backed
 PostgreSQL acceptance is an additional release and hosted integration gate; it
 may not replace deterministic unit and failure-path tests. Never commit live
 database credentials or weaken TLS defaults to simplify production use.
+
+Release-parity work must preserve the exact `spice-dev` tool version authorized
+by the root `go.mod`, invoke its full package path, and run both central and
+retained rehearsals with workspace and network resolution disabled in vendor
+mode. The retained repository builder and signed production workflow remain
+authoritative until a separately reviewed signing migration; unsigned parity
+must never manufacture signatures or key material.

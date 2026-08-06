@@ -11,6 +11,8 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/spice-framework/development v0.0.0-20260806034648-1856466df09d h1:MUguMzdLI5EGpLnvCBtbRf07rG8vubEZ0YQwfWvuvnE=
+github.com/spice-framework/development v0.0.0-20260806034648-1856466df09d/go.mod h1:0lIxjVtv+p4iTrvLJm05OjimS2MSrIqM1xPR7Q0GHEg=
 github.com/spice-framework/spice v0.0.0-20260805175412-383c17744300 h1:cqHN/VvCqhwGqj8kR+2XAev9PVSDOnW7AtkkI88XbwM=
 github.com/spice-framework/spice v0.0.0-20260805175412-383c17744300/go.mod h1:823ZmaopXc+f3ASWbIJL26fEXl1HP7lpyO0x5tE74tE=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

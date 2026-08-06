@@ -42,6 +42,55 @@ go run ./cmd/starter-postgres-release -rehearsal -version v0.1.0-rc.1 -output di
 Even in a dirty rehearsal, the source archive contains committed `HEAD` bytes,
 not uncommitted worktree or index content.
 
+## Unsigned dual-builder rehearsal
+
+The library module authorizes an exact central renderer through its
+`go.mod` tool directive. `make release-parity` runs that fully qualified tool
+and the retained repository builder twice each with `GOWORK=off`,
+`GOPROXY=off`, `GOTOOLCHAIN=local`, and `GOFLAGS=-mod=vendor`. It first asks the
+central tool for a read-only plan and then renders the plan without resolving
+an ambient workspace or downloading a module.
+
+The central renderer is the migration candidate. The retained repository
+builder remains both the parity oracle and the production signer:
+
+```text
+make release-parity
+```
+
+Both rehearsals are unsigned, deterministic across two independent outputs,
+and archive the exact committed `HEAD` tree. The older retained builder and the
+central renderer intentionally spell the single archive root differently:
+`starter-postgres-VERSION/` and `starter-postgres_VERSION/`, respectively.
+Parity therefore decodes both PAX archives, normalizes only those exact
+prefixes, and requires identical entry order, paths, modes, types, links,
+sizes, timestamps, extended records, gzip metadata, and content hashes. It
+does not claim the compressed archives are byte-identical.
+
+The SPDX documents must contain the same package facts and dependency
+relationships after semantic ordering. These R1 differences are intentional
+and validated explicitly:
+
+- document name (`Spice PostgreSQL Starter VERSION` retained and
+  `starter-postgres VERSION` centrally);
+- namespace identity (the central namespace includes `spdx/v1/`);
+- tool creator identifying the actual builder;
+- package and relationship ordering; and
+- the central document's one `DESCRIBES` relationship, which the retained R1
+  builder predates and omits.
+
+Both builders use `Organization: Spice Framework`; changing that value is not
+an allowed provenance difference. Every other decoded SPDX field must match.
+Each checksum file must canonically verify its own archive and SBOM. Because
+both payloads have documented differences, checksum files are not expected to
+be byte-identical. Extra artifacts, signatures, malformed checksums, archive
+entry drift, or undocumented SBOM drift fail closed.
+
+`make verify-release` runs this dual-builder proof. The production tag workflow
+deliberately continues to invoke `cmd/starter-postgres-release`, validate its
+signature and hashes, and publish its signed artifacts until signing authority
+is migrated in a separate review.
+
 ## Signing and verification
 
 Generate an offline Ed25519 PKCS#8 key and keep it outside the repository:
