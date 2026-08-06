@@ -5,63 +5,14 @@ on:
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
 
+# The called workflow narrows validation and signing to read-only access and
+# reserves this maximum capability for its protected publish job.
 permissions:
   contents: write
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   release:
-    name: Verify and publish source release
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - name: Check out exact tag
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Set up exact Go toolchain
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version: 1.26.5
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
-      - name: Verify complete release candidate
-        run: |
-          make verify
-          make verify-release
-      - name: Require protected Ed25519 key
-        env:
-          SPICE_POSTGRES_RELEASE_SIGNING_KEY: ${{ secrets.SPICE_POSTGRES_RELEASE_SIGNING_KEY }}
-        run: |
-          test -n "$SPICE_POSTGRES_RELEASE_SIGNING_KEY"
-          umask 077
-          printf '%s' "$SPICE_POSTGRES_RELEASE_SIGNING_KEY" > "$RUNNER_TEMP/starter-postgres-release.key"
-      - name: Build signed deterministic artifacts
-        run: |
-          epoch="$(git show -s --format=%ct HEAD)"
-          go run ./cmd/starter-postgres-release \
-            -version="$GITHUB_REF_NAME" \
-            -source-date-epoch="$epoch" \
-            -signing-key="$RUNNER_TEMP/starter-postgres-release.key" \
-            -output=dist
-      - name: Verify signature and hashes
-        working-directory: dist
-        run: |
-          openssl pkeyutl -verify -pubin -inkey checksums.txt.pem -rawin -in checksums.txt -sigfile checksums.txt.sig
-          sha256sum -c checksums.txt
-      - name: Remove temporary signing key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/starter-postgres-release.key"
-      - name: Publish immutable-tag assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --verify-tag
-          --generate-notes
-          --fail-on-no-commits
+    name: Centrally verify, sign, and publish
+    uses: spice-framework/.github/.github/workflows/library-release.yml@164e81ea4a31fa124670dc69afaec5bdf5747d78
+    with:
+      module: github.com/spice-framework/starter-postgres

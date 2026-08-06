@@ -130,7 +130,10 @@ func checkIdentity(ctx context.Context, root string) error {
 	if bytes.Contains(content, []byte("\nreplace ")) || bytes.Contains(content, []byte("\nreplace (")) {
 		return errors.New("committed go.mod must not contain replace directives")
 	}
-	return requireReleaseTool(ctx, root)
+	if err := requireReleaseTool(ctx, root); err != nil {
+		return err
+	}
+	return checkReleaseWorkflow(root)
 }
 
 func format(ctx context.Context, root string, write bool) error {

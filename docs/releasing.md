@@ -51,8 +51,8 @@ and the retained repository builder twice each with `GOWORK=off`,
 central tool for a read-only plan and then renders the plan without resolving
 an ambient workspace or downloading a module.
 
-The central renderer is the migration candidate. The retained repository
-builder remains both the parity oracle and the production signer:
+The central signer is the protected production path. The retained repository
+builder remains only the parity oracle:
 
 ```text
 make release-parity
@@ -86,10 +86,8 @@ both payloads have documented differences, checksum files are not expected to
 be byte-identical. Extra artifacts, signatures, malformed checksums, archive
 entry drift, or undocumented SBOM drift fail closed.
 
-`make verify-release` runs this dual-builder proof. The production tag workflow
-deliberately continues to invoke `cmd/starter-postgres-release`, validate its
-signature and hashes, and publish its signed artifacts until signing authority
-is migrated in a separate review.
+`make verify-release` runs this dual-builder proof. The retained command stays
+in the repository for that proof but is not called by the production workflow.
 
 ## Signing and verification
 
@@ -99,9 +97,18 @@ Generate an offline Ed25519 PKCS#8 key and keep it outside the repository:
 openssl genpkey -algorithm ED25519 -out starter-postgres-release-key.pem
 ```
 
-The command also accepts a base64-encoded 32-byte Ed25519 seed or 64-byte
-private key. GitHub reads the protected `SPICE_POSTGRES_RELEASE_SIGNING_KEY` secret. The
-private key is never copied into source, SBOM, logs, or release output.
+This repository must own a distinct user-generated key; never reuse another
+library's key. Derive its public half with the pinned central tool, review it,
+and commit it as `security/release/ed25519-public.pem`. Store only the private
+key as `SPICE_LIBRARY_RELEASE_SIGNING_KEY` in the protected `release-signing`
+environment. The private key is never copied into source, SBOM, logs, or
+release output.
+
+The repository must also have a protected `release-publish` environment. Do
+not create or push any release tag until both environments, required reviewers,
+the secret, and the reviewed public anchor are configured. The caller does not
+forward repository secrets; the central signing job can read only the secret
+attached to its named environment.
 
 Verify downloaded assets before use:
 
@@ -110,27 +117,24 @@ openssl pkeyutl -verify -pubin -inkey checksums.txt.pem -rawin -in checksums.txt
 sha256sum -c checksums.txt
 ```
 
-The public key is currently distributed beside the signature. That proves the
-checksum file and the published key belong together, but it is not by itself an
-independent identity anchor: an attacker able to replace every release asset
-could replace both. Until a reviewed starter-postgres public-key fingerprint is
-pinned in this repository, authenticity is rooted in the protected GitHub
-repository, exact Git tag, release page, and signing-secret controls. Consumers
-must obtain assets from that channel and must not treat an untrusted mirror plus
-its accompanying key as authenticated. Pinning and publishing the long-lived
-key fingerprint is required before claiming key-rooted authenticity.
+Consumers must authenticate `checksums.txt.sig` against the reviewed committed
+`security/release/ed25519-public.pem`, not an untrusted key downloaded beside
+the release. The central workflow refuses a signing key that does not match
+that trust anchor, and an independent tool verifies the complete artifact set
+before the protected publish job receives it.
 
 PowerShell users can compare the first checksum column with
 `Get-FileHash -Algorithm SHA256` for each named artifact.
 
 ## Release ceremony
 
-1. Run `make verify` once on the final clean commit, then `make verify-release`.
-2. Create and push an annotated canonical `vX.Y.Z` tag.
-3. The tag workflow repeats both gates, derives the epoch from the tag commit,
-   builds and signs the artifacts, verifies signature and hashes, and publishes
-   them with `gh release create`.
-4. Download the published assets and independently verify the signature,
+1. Confirm the reviewed public key and both protected environments are active.
+2. Run `make verify` once on the final clean commit, then `make verify-release`.
+3. Create and push an annotated canonical `vX.Y.Z` tag.
+4. The pinned central workflow validates the exact tag, signs with the protected
+   key, independently authenticates the result, and publishes only the verified
+   artifact set from `release-publish`.
+5. Download the published assets and independently verify the signature,
    checksums, source prefix, and SPDX document.
 
 GitHub is the distribution mirror; the same repository command constructs

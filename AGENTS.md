@@ -18,6 +18,7 @@ database credentials or weaken TLS defaults to simplify production use.
 Release-parity work must preserve the exact `spice-dev` tool version authorized
 by the root `go.mod`, invoke its full package path, and run both central and
 retained rehearsals with workspace and network resolution disabled in vendor
-mode. The retained repository builder and signed production workflow remain
-authoritative until a separately reviewed signing migration; unsigned parity
-must never manufacture signatures or key material.
+mode. The protected central workflow is the production path once its user-owned
+key, reviewed public anchor, and release environments are configured. The
+retained repository builder remains only a parity oracle; unsigned parity must
+never manufacture signatures or key material.
