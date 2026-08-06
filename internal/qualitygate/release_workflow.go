@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const releaseWorkflowRevision = "f8fe9ec3cedd17f8bec4bf3d40f6640902774124"
+const releaseWorkflowRevision = "37dbac1ce9a616574f899afcb531f2097c71855c"
 
 func checkReleaseWorkflow(root string) error {
 	path := filepath.Join(root, ".github", "workflows", "release.yml")
@@ -16,7 +16,7 @@ func checkReleaseWorkflow(root string) error {
 		return fmt.Errorf("read release workflow: %w", err)
 	}
 	if strings.ReplaceAll(string(content), "\r\n", "\n") != expectedReleaseWorkflow(modulePath) {
-		return fmt.Errorf("release workflow must call the protected central workflow at %s for module %s without secret forwarding", releaseWorkflowRevision, modulePath)
+		return fmt.Errorf("release workflow must call the protected central workflow at %s for module %s with only the named signing secret", releaseWorkflowRevision, modulePath)
 	}
 	return nil
 }
@@ -37,6 +37,8 @@ jobs:
     permissions:
       contents: write
     uses: spice-framework/.github/.github/workflows/library-release.yml@%s
+    secrets:
+      SPICE_LIBRARY_RELEASE_SIGNING_KEY: ${{ secrets.SPICE_LIBRARY_RELEASE_SIGNING_KEY }}
     with:
       module: %s
 `, releaseWorkflowRevision, module)

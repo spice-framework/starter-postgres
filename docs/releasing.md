@@ -99,18 +99,20 @@ openssl genpkey -algorithm ED25519 -out starter-postgres-release-key.pem
 
 This repository owns a distinct public trust anchor at
 `security/release/ed25519-public.pem`. Its SHA-256 fingerprint is
-`a84f6ffe579d5779274cebebb7bc3bdb9b4718cabb8a864ab477875875c16e17`.
-Review that fingerprint independently before configuring the matching private
-key as `SPICE_LIBRARY_RELEASE_SIGNING_KEY` in the protected `release-signing`
-environment. The private key is never copied into source, SBOM, logs, or
-release output, and the committed public anchor does not by itself mean a
-signed release exists.
+`cc42428a74b539af7f6975d84b63c830267ac227062fc412970fc5ad586b7e65`.
+Review that fingerprint independently. The matching private key is stored only
+as the repository Actions secret `SPICE_LIBRARY_RELEASE_SIGNING_KEY`; it is
+never copied into source, an environment secret, SBOM, logs, or release output.
+The caller forwards exactly that named secret to the pinned reusable workflow,
+and broad `secrets: inherit` forwarding is forbidden.
 
-The repository must also have a protected `release-publish` environment. Do
-not create or push any release tag until both environments, required reviewers,
-the secret, and the reviewed public anchor are configured. The caller does not
-forward repository secrets; the central signing job can read only the secret
-attached to its named environment.
+The protected `release-signing` and `release-publish` environments retain their
+required reviewers and tag branch policies. The reusable workflow attaches the
+secret-consuming signing job to `release-signing`; validation, planning,
+independent verification, and publication cannot read the private key. Do not
+create or push any release tag until the repository secret, both environments,
+required reviewers, and reviewed public anchor are confirmed. These controls
+do not by themselves mean a signed release exists.
 
 Verify downloaded assets before use:
 
@@ -130,7 +132,7 @@ PowerShell users can compare the first checksum column with
 
 ## Release ceremony
 
-1. Confirm the committed public-key fingerprint above and both protected environments are active.
+1. Confirm the committed public-key fingerprint, repository Actions secret, and both protected environments are active.
 2. Run `make verify` once on the final clean commit, then `make verify-release`.
 3. Create and push an annotated canonical `vX.Y.Z` tag.
 4. The pinned central workflow validates the exact tag, signs with the protected
