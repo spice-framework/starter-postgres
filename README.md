@@ -1,5 +1,7 @@
 # Spice PostgreSQL starter
 
+Unified documentation: [spiceframework.dev/integrations/postgres](https://spiceframework.dev/integrations/postgres/).
+
 `github.com/spice-framework/starter-postgres` is the independently versioned,
 opt-in PostgreSQL integration for Spice. It provides a secure pgx-backed
 `database/sql` pool plus deterministic adapters for Spice transactions,
