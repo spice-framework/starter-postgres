@@ -27,6 +27,21 @@ type Executor interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
+type executorContextKey struct{}
+
+// ExecutorFromContext returns the transaction-owned executor installed by
+// Manager.Within. Generated service decorators use this explicit accessor so
+// repository implementations can participate without receiving a transaction
+// parameter through every service method. It returns false outside a managed
+// transaction.
+func ExecutorFromContext(ctx context.Context) (Executor, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	executor, ok := ctx.Value(executorContextKey{}).(Executor)
+	return executor, ok && executor != nil
+}
+
 // Definition is compiler-owned metadata for one transaction boundary.
 type Definition struct {
 	ID        string
@@ -128,7 +143,12 @@ func (manager *Manager) Within(
 		panic(recovered)
 	}()
 
-	if err := work(observedContext, tx); err != nil {
+	transactionContext := context.WithValue(
+		observedContext,
+		executorContextKey{},
+		Executor(tx),
+	)
+	if err := work(transactionContext, tx); err != nil {
 		workErr := fmt.Errorf("execute transaction %q: %w", definition.ID, err)
 		resultErr = errors.Join(workErr, rollback(tx, definition.ID))
 		finish(Result{Definition: definition, Duration: time.Since(started), Err: resultErr})
